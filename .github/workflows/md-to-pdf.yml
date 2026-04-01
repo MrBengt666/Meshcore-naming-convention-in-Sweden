@@ -21,14 +21,15 @@ jobs:
       - name: Convert README.md to PDF
         run: |
           mkdir -p output
-          pandoc Namngivning_Meshcore_Noder_2026-03-24.md \
-            -o output/README.pdf \
+          pandoc Namngivning_Meshcore_Noder.md \
+            -o output/Namngivning_Meshcore_Noder.pdf \
             --pdf-engine=xelatex \
-            --metadata title="Project Documentation"
+            --metadata title="Namngivning av Meshcore Noder i Sverige" \
+            --metadata date="$(date '+%Y-%m-%d')"
 
       - name: Upload PDF as a release asset
         uses: softprops/action-gh-release@v2
         with:
-          files: output/README.pdf
+          files: output/Namngivning_Meshcore_Noder.pdf
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
