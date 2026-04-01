@@ -8,7 +8,9 @@ jobs:
   render-to-pdf:
     name: Convert Markdown to PDF and upload to release
     runs-on: ubuntu-latest
-
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true  # Opt into Node.js 24 early
+      
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
