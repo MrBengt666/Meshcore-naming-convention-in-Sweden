@@ -1,4 +1,4 @@
-# Meshcore-naming-convention-in-Sweden
+# Meshcore naming convention in Sweden
 Recommended naming convention for Meshcore-nodes in Sweden
 
 © 2026 frav_se, PappaNiklas, haxdoggy, DanielPaulsson, Burt Persson (MrBengt666)
