@@ -36,7 +36,7 @@ SE-LAH-HALLONV1-BF12
 
 | **Fält** | **Längd** | **Beskrivning** |
 |---|---|---|
-| **[SE]** | 2 (fast) | Landskod enligt ISO 3166-1 alpha-2 |
+| **[SE]** | 2 (fast) | Landskod enligt ISO 3166-1 alpha-2. Skall vara SE för noder i Sverige |
 | **[IATA\|KOMMUN]** | 3 (fast) | IATA-kod för närmaste flygplats (Meshmapper-område), t.ex. `ARN`, `GOT` — eller förkortning för kommun som ej sammanfaller med svensk IATA-kod, t.ex. `BST`, `MAL`. Båda tre bokstäver. Se appendix för rekommenderade förkortningar för kommun. |
 | **[BESKRIVNING]** | max 10 | Placering, ägare eller adress. Se nodtyper nedan. |
 | **[PKID]** | 4 (fast) | Fyra första tecknen i nodens publika nyckel, t.ex. `A3FX` |
