@@ -1,3 +1,8 @@
+---
+title: "Project Documentation"
+date: "$BUILD_DATE$"
+---
+
 Rekommendationer för namngivning av noder i Meshcore-nät
 ===
 
@@ -48,4 +53,4 @@ SE-LAH-HALLONV1-BF12
 
 *Kommunkoder: Se Appendix. IATA-koder: Se Appendix samt Meshmapper.*
 
-*Dokumentet genererat: 2026-03-24*
+
