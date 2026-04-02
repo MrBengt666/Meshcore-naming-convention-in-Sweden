@@ -1,5 +1,11 @@
 # Lista över Sveriges kommuner med flygplatser och tre-bokstavs förkortning
 
+frav\_se\*, PappaNiklas\*, haxdoggy\*, DanielPaulsson\*, Burt Persson — \
+* SysOps för http://had.meshmapper.net/
+
+Kontakt: Discord SWEDEN-MESH #halland
+https://discord.com/channels/1359596001240944660/1467977832557973635
+
 Detta är en lista över Sveriges kommuner 2025 med tilllagt akronym baserat på kommun-namnet i tre bokstäver utan ÅÄÖ. Det finns 290 kommuner.
 
 Rader markerade i `grönt` innehåller en eller flera flygplatser inom kommunen (källa: AP). Kommuner utan flygplats har tomma AP-kolumner.
