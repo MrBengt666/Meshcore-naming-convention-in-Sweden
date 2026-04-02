@@ -6,9 +6,11 @@ date: "$BUILD_DATE$"
 Rekommendationer för namngivning av noder i Meshcore-nät
 ===
 
-frav\_se\*, PappaNiklas\*, haxdoggy\*, DanielPaulsson\*, Burt Persson — \* SysOps för http://had.meshmapper.net/
+frav\_se\*, PappaNiklas\*, haxdoggy\*, DanielPaulsson\*, Burt Persson — \
+* SysOps för http://had.meshmapper.net/
 
-Kontakt: Discord SWEDEN-MESH #halland — https://discord.com/channels/1359596001240944660/1467977832557973635
+Kontakt: Discord SWEDEN-MESH #halland
+https://discord.com/channels/1359596001240944660/1467977832557973635
 
 En enhetlig namnstruktur underlättar felsökning och samordning. En gemensam konvention gör det möjligt att direkt från nodnamnet utläsa område, kommun och placering utan att konsultera extern dokumentation. **OBS! Detta är rekommendationer!**
 
