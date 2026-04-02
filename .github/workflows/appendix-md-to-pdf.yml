@@ -1,29 +1,76 @@
-name: Render filtered PDF
+name: Render kommuner PDF and upload to release
 
 on:
-  push:
-    paths:
-      - 'appendix_-_kommuner_med_flygplatser_och_förkortningar_*.md'
-  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: write   # allow upload/update of release assets
 
 jobs:
-  render:
+  build:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Python + Pandoc setup
       - name: Install dependencies
         run: |
-          pip install beautifulsoup4 markdown weasyprint
+          sudo apt-get update
+          sudo apt-get install -y pandoc texlive-xetex texlive-fonts-recommended python3 python3-pip
+          pip install pandas
 
-      - name: Filter columns and render PDF
-        run: python appendix-filter-and-render2.py
-
-      - name: Upload PDF to release or commit
+      # Extract only selected columns from table in Markdown
+      - name: Preprocess Markdown
         run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
-          git add output/*.pdf
-          git commit -m "Auto-rendered filtered PDF $(date +%Y-%m-%d)" || echo "No changes"
-          git push origin HEAD:${{ github.ref_name }}
+          python3 - <<'PYCODE'
+          import pandas as pd, re, io, sys
+          import html
 
+          src = Path("appendix_-_kommuner_med_flygplatser_och_förkortningar_Komplett.md")
+          text = src.read_text(encoding="utf-8", errors="ignore")
+
+          # Find first markdown table starting with "| Storleks"
+          m = re.search(r"(\| *Storleks[^\n]+(\n\|[^\n]+)+)", text)
+          if not m:
+              sys.exit("Could not find markdown table")
+
+          table_md = m.group(1)
+          # Convert markdown table -> DataFrame (fast simple parser)
+          # use pandas.read_csv on pipe-separated
+          df = pd.read_csv(io.StringIO(
+              "\n".join(
+                  re.sub(r"^\|","",re.sub(r"\| *$","",line))
+                  for line in table_md.splitlines() if line.strip().startswith("|")
+              )
+          ), sep="|", engine="python")
+
+          keep = ['Storleks- ordning','Kommun','Kommun- förkortning','Centralort','IATA','ICAO','Folkmängd']
+          df = df[keep].copy()
+
+          out_md = "# Sveriges kommuner med flygplatser (urval)\n\n"
+          out_md += df.to_markdown(index=False)
+          Path("output.md").write_text(out_md, encoding="utf-8")
+          PYCODE
+
+      # Convert reduced Markdown to PDF
+      - name: Convert to PDF
+        run: |
+          mkdir -p output
+          pandoc output.md \
+            -o output/Kommuner_Flygplatser.pdf \
+            --pdf-engine=xelatex \
+            --metadata title="Kommuner med flygplatser" \
+            --metadata date="$(date '+%Y-%m-%d')"
+
+      # Upload PDF to the release that triggered this workflow
+      - name: Upload PDF as release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: output/Kommuner_Flygplatser.pdf
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
