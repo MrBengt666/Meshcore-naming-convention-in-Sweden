@@ -30,6 +30,7 @@ jobs:
           python3 - <<'PYCODE'
           import pandas as pd, re, io, sys
           import html
+          from pathlib import Path
 
           src = Path("appendix_-_kommuner_med_flygplatser_och_förkortningar_Komplett.md")
           text = src.read_text(encoding="utf-8", errors="ignore")
