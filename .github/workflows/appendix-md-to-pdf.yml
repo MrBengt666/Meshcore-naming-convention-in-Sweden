@@ -28,8 +28,7 @@ jobs:
       - name: Preprocess Markdown
         run: |
           python3 - <<'PYCODE'
-          import pandas as pd, re, io, sys
-          import html
+          import pandas as pd, re, sys
           from pathlib import Path
 
           src = Path("appendix_-_kommuner_med_flygplatser_och_förkortningar_Komplett.md")
@@ -41,21 +40,59 @@ jobs:
               sys.exit("Could not find markdown table")
 
           table_md = m.group(1)
-          # Convert markdown table -> DataFrame (fast simple parser)
-          # use pandas.read_csv on pipe-separated
-          df = pd.read_csv(io.StringIO(
-              "\n".join(
-                  re.sub(r"^\|","",re.sub(r"\| *$","",line))
-                  for line in table_md.splitlines() if line.strip().startswith("|")
-              )
-          ), sep="|", engine="python")
 
-          keep = ['Storleks- ordning','Kommun','Kommun- förkortning','Centralort','IATA','ICAO','Folkmängd']
-          df = df[keep].copy()
+          # Parse rows manually; skip alignment/separator lines (|:---:|...)
+          rows = []
+          for line in table_md.splitlines():
+              line = line.strip()
+              if not line.startswith("|"):
+                  continue
+              if re.match(r"^\|[\s\-:]+\|", line):
+                  continue
+              cells = [c.strip() for c in line.strip("|").split("|")]
+              rows.append(cells)
+
+          if len(rows) < 2:
+              sys.exit("Not enough rows parsed from table")
+
+          headers = rows[0]
+          data = rows[1:]
+
+          # Pad or truncate rows to header length
+          n = len(headers)
+          data = [r[:n] + [""] * (n - len(r)) for r in data]
+
+          df = pd.DataFrame(data, columns=headers)
+
+          # Normalize column names: collapse internal whitespace so
+          # "Storleks- ordning" and "Storleks-  ordning" both match
+          df.columns = [" ".join(c.split()) for c in df.columns]
+
+          # Desired columns -> output names
+          keep = {
+              "Storleks- ordning":   "Storleksordning",
+              "Kommun":              "Kommun",
+              "Kommun- förkortning": "Kommunförkortning",
+              "Centralort":          "Centralort",
+              "IATA":                "IATA",
+              "ICAO":                "ICAO",
+              "Folkmängd":           "Folkmängd",
+          }
+
+          missing = [k for k in keep if k not in df.columns]
+          if missing:
+              print("Available columns:", df.columns.tolist(), file=sys.stderr)
+              sys.exit(f"Missing expected columns: {missing}")
+
+          df = df[list(keep.keys())].rename(columns=keep).copy()
+
+          # Drop rows where Kommun is blank (continuation rows, etc.)
+          df = df[df["Kommun"].str.strip().astype(bool)].reset_index(drop=True)
 
           out_md = "# Sveriges kommuner med flygplatser (urval)\n\n"
           out_md += df.to_markdown(index=False)
           Path("output.md").write_text(out_md, encoding="utf-8")
+          print(f"Done – {len(df)} rows written to output.md")
           PYCODE
 
       # Convert reduced Markdown to PDF
