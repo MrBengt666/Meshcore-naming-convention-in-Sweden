@@ -24,11 +24,30 @@ jobs:
           sudo apt-get install -y pandoc texlive-xetex texlive-fonts-recommended python3 python3-pip
           pip install pandas tabulate
 
+      # Write the preamble text to a separate UTF-8 file so Swedish chars survive
+      - name: Write preamble
+        run: |
+          python3 -c "
+          from pathlib import Path
+          Path('preamble.md').write_text(
+              'frav\\_se\\*, PappaNiklas\\*, haxdoggy\\*, DanielPaulsson\\*, Burt Persson'
+              ' \u2014 \\* SysOps f\u00f6r http://had.meshmapper.net/'
+              ' Kontakt: Discord SWEDEN-MESH\\#halland'
+              ' \u2014 https://discord.com/channels/1359596001240944660/146797\n\n'
+              'Denna lista visar sveriges 290 komuner och ger rekommenderar f\u00f6rkortning'
+              ' att anv\u00e4nda f\u00f6r namning av mesh-noder. Listan utg\u00f6r ett appendix till'
+              ' dokumentet: **Namngivning\\_Meshcore\\_Noder**.'
+              ' Tabellen ger ett urval av kolumner - mer data finns i md-filen p\u00e5 GitHub.'
+              ' Kolumnen \u00e4r kommunens plats rankad efter befolkningsm\u00e4ngd.\n\n',
+              encoding='utf-8'
+          )
+          "
+
       # Extract only selected columns from table in Markdown
       - name: Preprocess Markdown
         run: |
           python3 - <<'PYCODE'
-          import pandas as pd, re, sys
+          import pandas as pd, re, sys, textwrap
           from pathlib import Path
 
           src = Path("appendix_-_kommuner_med_flygplatser_och_förkortningar_Komplett.md")
@@ -64,8 +83,7 @@ jobs:
 
           df = pd.DataFrame(data, columns=headers)
 
-          # Normalize column names: collapse internal whitespace so
-          # "Storleks- ordning" and "Storleks-  ordning" both match
+          # Normalize column names: collapse internal whitespace
           df.columns = [" ".join(c.split()) for c in df.columns]
 
           # Desired columns -> output names
@@ -89,8 +107,7 @@ jobs:
           # Drop rows where Kommun is blank (continuation rows, etc.)
           df = df[df["Kommun"].str.strip().astype(bool)].reset_index(drop=True)
 
-          # Wrap long cell text so it doesn't overflow into adjacent cells
-          import textwrap
+          # Wrap long cell text so it does not overflow into adjacent cells
           MAX_CHARS = {
               "Storleksordning":    6,
               "Kommun":            22,
@@ -106,10 +123,10 @@ jobs:
                       lambda v: "\n".join(textwrap.wrap(str(v), width)) if pd.notna(v) else v
                   )
 
-          out_md = "# Sveriges kommuner med flygplatser (urval)\n\n"
-          out_md += df.to_markdown(index=False)
+          preamble = Path("preamble.md").read_text(encoding="utf-8")
+          out_md = preamble + df.to_markdown(index=False)
           Path("output.md").write_text(out_md, encoding="utf-8")
-          print(f"Done – {len(df)} rows written to output.md")
+          print(f"Done - {len(df)} rows written to output.md")
           PYCODE
 
       # Convert reduced Markdown to PDF
@@ -136,7 +153,7 @@ jobs:
             -V fontsize=7pt \
             -V geometry:landscape \
             -V geometry:"margin=1cm" \
-            --metadata title="Kommuner med flygplatser" \
+            --metadata title="Appendix - Kommuner med rekommenderade förkortninger, samt flygplatser-koder" \
             --metadata date="${BUILD_DATE}"
 
           echo "PDF_NAME=${PDF_NAME}" >> $GITHUB_ENV
