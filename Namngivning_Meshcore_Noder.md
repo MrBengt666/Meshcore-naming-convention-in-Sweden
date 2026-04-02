@@ -20,14 +20,14 @@ En enhetlig namnstruktur underlättar felsökning och samordning. En gemensam ko
 [SE]-[IATA|KOMMUN]-[BESKRIVNING]-[PKID]
 ```
 
-Alla fält obligatoriska. Versaler genomgående. Inga svenska tecken. Bindestreck (`-`) som enda avskiljare. Max 22 tecken totalt (inkl. bindestreck).
+Alla fält obligatoriska. Versaler genomgående, förutom i beskrivning. Inga svenska tecken. Bindestreck (`-`) som enda avskiljare. Max 22 tecken totalt (inkl. bindestreck).
 
 ## Exempel
 
 ```
-SE-HAD-ARNECOMP-AB12
-SE-BST-KATTVREP1-EF34
-SE-LAH-HALLONV1-BF12
+SE-HAD-MrBengtCOM-AB12
+SE-BST-KattvkRep1-EF34
+SE-LAH-HallonGrg1-BF12
 ```
 
 ---
@@ -38,7 +38,7 @@ SE-LAH-HALLONV1-BF12
 |---|---|---|
 | **[SE]** | 2 (fast) | Landskod enligt ISO 3166-1 alpha-2. Skall vara SE för noder i Sverige |
 | **[IATA\|KOMMUN]** | 3 (fast) | IATA-kod för närmaste flygplats (Meshmapper-område), t.ex. `ARN`, `GOT` — eller förkortning för kommun som ej sammanfaller med svensk IATA-kod, t.ex. `BST`, `MAL`. Båda tre bokstäver. Se appendix för rekommenderade förkortningar för kommun. |
-| **[BESKRIVNING]** | max 10 | Placering, ägare eller adress. Se nodtyper nedan. |
+| **[BESKRIVNING]** | max 10 | Placering, ägare eller adress. Se nodtyper nedan. Rekommenderas inledande versal och sedan gemener. Se nodtyper nedan. |
 | **[PKID]** | 4 (fast) | Fyra första tecknen i nodens publika nyckel, t.ex. `A3FX` |
 
 ## Rekommendationer per nodtyp
