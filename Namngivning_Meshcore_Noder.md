@@ -3,7 +3,7 @@ title: "Project Documentation"
 date: "$BUILD_DATE$"
 ---
 
-Rekommendationer för namngivning av noder i Meshcore-nät
+XRekommendationer för namngivning av noder i Meshcore-nät
 ===
 
 frav\_se\*, PappaNiklas\*, haxdoggy\*, DanielPaulsson\*, Burt Persson — \* SysOps för http://had.meshmapper.net/
