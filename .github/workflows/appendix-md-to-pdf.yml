@@ -1,0 +1,28 @@
+name: Render filtered PDF
+
+on:
+  push:
+    paths:
+      - 'appendix_-_kommuner_med_flygplatser_och_förkortningar_*.md'
+  workflow_dispatch:
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          pip install beautifulsoup4 markdown weasyprint
+
+      - name: Filter columns and render PDF
+        run: python filter_and_render.py
+
+      - name: Upload PDF to release or commit
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add output/*.pdf
+          git commit -m "Auto-rendered filtered PDF $(date +%Y-%m-%d)" || echo "No changes"
+          git push
