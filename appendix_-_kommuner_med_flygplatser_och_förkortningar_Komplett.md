@@ -1,6 +1,6 @@
 # Lista över Sveriges kommuner med flygplatser och tre-bokstavs förkortning
 
-frav\_se\*, PappaNiklas\*, haxdoggy\*, DanielPaulsson\*, Burt Persson — \
+frav\_se\*, PappaNiklas\*, haxdoggy\*, DanielPaulsson\*, Burt Persson \
 \* SysOps för http://had.meshmapper.net/
 
 Kontakt: Discord SWEDEN-MESH #halland
