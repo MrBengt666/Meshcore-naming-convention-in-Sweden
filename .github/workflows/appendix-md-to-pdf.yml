@@ -22,7 +22,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y pandoc texlive-xetex texlive-fonts-recommended python3 python3-pip
-          pip install pandas
+          pip install pandas tabulate
 
       # Extract only selected columns from table in Markdown
       - name: Preprocess Markdown
