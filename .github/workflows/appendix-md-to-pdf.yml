@@ -32,7 +32,7 @@ jobs:
           Path('preamble.md').write_text(
               'frav\\_se\\*, PappaNiklas\\*, haxdoggy\\*, DanielPaulsson\\*, Burt Persson'
               ' \u2014 \\* SysOps f\u00f6r http://had.meshmapper.net/'
-              ' Kontakt: Discord SWEDEN-MESH\\#halland'
+              ' Kontakt: Discord SWEDEN-MESH\#halland'
               ' \u2014 https://discord.com/channels/1359596001240944660/146797\n\n'
               'Denna lista visar sveriges 290 komuner och ger rekommenderar f\u00f6rkortning'
               ' att anv\u00e4nda f\u00f6r namning av mesh-noder. Listan utg\u00f6r ett appendix till'
@@ -136,23 +136,34 @@ jobs:
           BUILD_DATE=$(date '+%Y-%m-%d')
           PDF_NAME="Appendix_Kommuner_forkortningar_${BUILD_DATE}.pdf"
 
-          # LaTeX header: landscape A4, narrow margins, small font
+          # LaTeX header:
+          #   - Portrait A4, tight margins to maximise text width
+          #   - Force longtable to span full \textwidth (no centering offset)
+          #   - Small font, tight column padding
+          #   - \noindent before longtable ensures preamble text is not swallowed
           cat > header.tex << 'LATEX'
-          \usepackage{geometry}
-          \geometry{a4paper,landscape,margin=1cm}
-          \usepackage{booktabs}
-          \usepackage{longtable}
-          \usepackage{array}
-          \setlength{\tabcolsep}{4pt}
-          LATEX
+\usepackage{geometry}
+\geometry{a4paper, portrait, top=1.5cm, bottom=1.5cm, left=1cm, right=1cm}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{etoolbox}
+\setlength{\LTleft}{0pt}
+\setlength{\LTright}{0pt}
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.1}
+% Ensure text before the first longtable is rendered (pandoc sometimes
+% wraps it in a group that LaTeX skips at the start of a page)
+\AtBeginDocument{\setlength{\parskip}{4pt}}
+LATEX
 
           pandoc output.md \
             -o "output/${PDF_NAME}" \
             --pdf-engine=xelatex \
             --include-in-header=header.tex \
             -V fontsize=7pt \
-            -V geometry:landscape \
-            -V geometry:"margin=1cm" \
+            -V papersize=a4 \
+            -V geometry:"portrait,top=1.5cm,bottom=1.5cm,left=1cm,right=1cm" \
             --metadata title="Appendix - Kommuner med rekommenderade förkortninger, samt flygplatser-koder" \
             --metadata date="${BUILD_DATE}"
 
