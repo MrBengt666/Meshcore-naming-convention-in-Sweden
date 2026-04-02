@@ -17,7 +17,7 @@ jobs:
           pip install beautifulsoup4 markdown weasyprint
 
       - name: Filter columns and render PDF
-        run: python filter_and_render2.py
+        run: python appendix-filter-and-render2.py
 
       - name: Upload PDF to release or commit
         run: |
