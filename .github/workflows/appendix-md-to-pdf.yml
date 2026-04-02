@@ -43,6 +43,27 @@ jobs:
           )
           "
 
+      # Write LaTeX header via Python to avoid heredoc-in-YAML indentation issues
+      - name: Write LaTeX header
+        run: |
+          python3 -c "
+          from pathlib import Path
+          Path('header.tex').write_text(
+              r'\usepackage{geometry}' + '\n'
+              r'\geometry{a4paper, portrait, top=1.5cm, bottom=1.5cm, left=1cm, right=1cm}' + '\n'
+              r'\usepackage{booktabs}' + '\n'
+              r'\usepackage{longtable}' + '\n'
+              r'\usepackage{array}' + '\n'
+              r'\usepackage{etoolbox}' + '\n'
+              r'\setlength{\LTleft}{0pt}' + '\n'
+              r'\setlength{\LTright}{0pt}' + '\n'
+              r'\setlength{\tabcolsep}{3pt}' + '\n'
+              r'\renewcommand{\arraystretch}{1.1}' + '\n'
+              r'\AtBeginDocument{\setlength{\parskip}{4pt}}' + '\n',
+              encoding='utf-8'
+          )
+          "
+
       # Extract only selected columns from table in Markdown
       - name: Preprocess Markdown
         run: |
@@ -135,27 +156,6 @@ jobs:
           mkdir -p output
           BUILD_DATE=$(date '+%Y-%m-%d')
           PDF_NAME="Appendix_Kommuner_forkortningar_${BUILD_DATE}.pdf"
-
-          # LaTeX header:
-          #   - Portrait A4, tight margins to maximise text width
-          #   - Force longtable to span full \textwidth (no centering offset)
-          #   - Small font, tight column padding
-          #   - \noindent before longtable ensures preamble text is not swallowed
-          cat > header.tex << 'LATEX'
-\usepackage{geometry}
-\geometry{a4paper, portrait, top=1.5cm, bottom=1.5cm, left=1cm, right=1cm}
-\usepackage{booktabs}
-\usepackage{longtable}
-\usepackage{array}
-\usepackage{etoolbox}
-\setlength{\LTleft}{0pt}
-\setlength{\LTright}{0pt}
-\setlength{\tabcolsep}{3pt}
-\renewcommand{\arraystretch}{1.1}
-% Ensure text before the first longtable is rendered (pandoc sometimes
-% wraps it in a group that LaTeX skips at the start of a page)
-\AtBeginDocument{\setlength{\parskip}{4pt}}
-LATEX
 
           pandoc output.md \
             -o "output/${PDF_NAME}" \
