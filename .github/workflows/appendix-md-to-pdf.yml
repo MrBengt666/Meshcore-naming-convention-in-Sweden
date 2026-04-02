@@ -89,6 +89,23 @@ jobs:
           # Drop rows where Kommun is blank (continuation rows, etc.)
           df = df[df["Kommun"].str.strip().astype(bool)].reset_index(drop=True)
 
+          # Wrap long cell text so it doesn't overflow into adjacent cells
+          import textwrap
+          MAX_CHARS = {
+              "Storleksordning":    6,
+              "Kommun":            22,
+              "Kommunförkortning":  6,
+              "Centralort":        18,
+              "IATA":               4,
+              "ICAO":               4,
+              "Folkmängd":          9,
+          }
+          for col, width in MAX_CHARS.items():
+              if col in df.columns:
+                  df[col] = df[col].apply(
+                      lambda v: "\n".join(textwrap.wrap(str(v), width)) if pd.notna(v) else v
+                  )
+
           out_md = "# Sveriges kommuner med flygplatser (urval)\n\n"
           out_md += df.to_markdown(index=False)
           Path("output.md").write_text(out_md, encoding="utf-8")
@@ -99,16 +116,35 @@ jobs:
       - name: Convert to PDF
         run: |
           mkdir -p output
+          BUILD_DATE=$(date '+%Y-%m-%d')
+          PDF_NAME="Appendix_Kommuner_forkortningar_${BUILD_DATE}.pdf"
+
+          # LaTeX header: landscape A4, narrow margins, small font
+          cat > header.tex << 'LATEX'
+          \usepackage{geometry}
+          \geometry{a4paper,landscape,margin=1cm}
+          \usepackage{booktabs}
+          \usepackage{longtable}
+          \usepackage{array}
+          \setlength{\tabcolsep}{4pt}
+          LATEX
+
           pandoc output.md \
-            -o output/Kommuner_Flygplatser.pdf \
+            -o "output/${PDF_NAME}" \
             --pdf-engine=xelatex \
+            --include-in-header=header.tex \
+            -V fontsize=7pt \
+            -V geometry:landscape \
+            -V geometry:"margin=1cm" \
             --metadata title="Kommuner med flygplatser" \
-            --metadata date="$(date '+%Y-%m-%d')"
+            --metadata date="${BUILD_DATE}"
+
+          echo "PDF_NAME=${PDF_NAME}" >> $GITHUB_ENV
 
       # Upload PDF to the release that triggered this workflow
       - name: Upload PDF as release asset
         uses: softprops/action-gh-release@v2
         with:
-          files: output/Kommuner_Flygplatser.pdf
+          files: output/${{ env.PDF_NAME }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
