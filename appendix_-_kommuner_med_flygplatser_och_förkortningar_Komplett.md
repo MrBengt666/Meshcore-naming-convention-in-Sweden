@@ -111,7 +111,7 @@ Rader markerade i `grönt` innehåller en eller flera flygplatser inom kommunen 
 |  | Sveg Härjedalens flygplats | EVG | ESND | Reguljär | Sveg | 62°02'N 14°25'E | 842 31 |  |  |  |  |  |  |  |  |  |  |  |  |
 | 108 | 2280 | Härnösands kommun | HRN | Härnösand | Västernorrlands län | Härnösand (Myran) |  | ESUH |  | Härnösand | 62°33'N 17°55'E | 871 91 | 24 348 | 1 938,64 | 1 058,38 | 42,64 | 0,00 | 837,62 | 23,00 |
 | 68 | 1401 | Härryda kommun | HRR | Mölnlycke | Västra Götalands län | Göteborg-Landvetter flygplats | GOT | ESGG | Reguljär(Swedavia) | Härryda (Landvetter) | 57°40'N 12°17'E | 438 80 | 40 011 | 291,66 | 266,70 | 24,96 | 0,00 | 0,00 | 150,02 |
-| 48 | 1293 | Hässleholms kommun | HSS | Hässleholm | Skåne län | Hässleholm/Bokeberg |  | ESFA |  | Hässleholm | 56°06'N 13°43'E | 281 91 | 51 915 | 1 306,39 | 1 268,97 | 37,42 | 0,00 | 0,00 | 40,91 |
+| 48 | 1293 | Hässleholms kommun | HLM | Hässleholm | Skåne län | Hässleholm/Bokeberg |  | ESFA |  | Hässleholm | 56°06'N 13°43'E | 281 91 | 51 915 | 1 306,39 | 1 268,97 | 37,42 | 0,00 | 0,00 | 40,91 |
 |  | Hässleholm/Vankiva |  | ESMD | Stängd | Hässleholm | 56°11'N 13°45'E | 281 92 |  |  |  |  |  |  |  |  |  |  |  |  |
 | 94 | 1284 | Höganäs kommun | HGA | Höganäs | Skåne län | Höganäs |  | ESMH |  | Höganäs | 56°12'N 12°34'E | 263 91 | 28 489 | 676,13 | 143,50 | 0,38 | 0,00 | 532,25 | 198,53 |
 | 273 | 0821 | Högsby kommun | HGS | Högsby | Kalmar län |  |  |  |  |  |  |  | 5 134 | 799,42 | 751,10 | 48,32 | 0,00 | 0,00 | 6,84 |
@@ -136,7 +136,7 @@ Rader markerade i `grönt` innehåller en eller flera flygplatser inom kommunen 
 | 132 | 1276 | Klippans kommun | KLI | Klippan | Skåne län | Ljungbyheds flygplats |  | ESTL |  | Ljungbyhed | 56°04'N 13°12'E | 268 91 | 17 713 | 379,41 | 374,32 | 5,09 | 0,00 | 0,00 | 47,32 |
 | 119 | 0330 | Knivsta kommun | KNI | Knivsta | Uppsala län |  |  |  |  |  |  |  | 21 733 | 295,11 | 282,13 | 4,25 | 8,73 | 0,00 | 77,03 |
 | 138 | 2282 | Kramfors kommun | KRA | Kramfors | Västernorrlands län | Kramfors-Sollefteå Höga Kustens flygplats | KRF | ESNK | Reguljär | Kramfors | 62°59'N 17°46'E | 872 92 | 17 390 | 2 892,53 | 1 694,59 | 90,41 | 0,00 | 1 107,53 | 10,26 |
-| 28 | 1290 | Kristianstads kommun | KRI | Kristianstad | Skåne län | Kristianstad Österlen Airport | KID | ESMK | Reguljär | Kristianstad | 55°55'N 14°05'E | 296 92 | 85 908 | 1 818,25 | 1 245,22 | 94,13 | 0,00 | 478,90 | 68,99 |
+| 28 | 1290 | Kristianstads kommun | KID | Kristianstad | Skåne län | Kristianstad Österlen Airport | KID | ESMK | Reguljär | Kristianstad | 55°55'N 14°05'E | 296 92 | 85 908 | 1 818,25 | 1 245,22 | 94,13 | 0,00 | 478,90 | 68,99 |
 | 111 | 1781 | Kristinehamns kommun | KRS | Kristinehamn | Värmlands län |  |  |  |  |  |  |  | 23 590 | 1 384,43 | 755,20 | 40,66 | 588,57 | 0,00 | 31,24 |
 | 152 | 2309 | Krokoms kommun | KRO | Krokom | Jämtlands län |  |  |  |  |  |  |  | 15 795 | 6 812,61 | 6 154,45 | 658,16 | 0,00 | 0,00 | 2,57 |
 | 114 | 1881 | Kumla kommun | KUM | Kumla | Örebro län |  |  |  |  |  |  |  | 22 665 | 205,79 | 204,20 | 1,59 | 0,00 | 0,00 | 110,99 |
