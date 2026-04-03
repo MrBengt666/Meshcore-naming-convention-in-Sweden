@@ -164,168 +164,169 @@ jobs:
           n_multi    = len(multi_airport_kommuner)
 
           # ── 5. Assemble HTML ─────────────────────────────────────────────────
-          # Template written at col 0 so indentation is explicit and correct.
-          # thead/tbody already carry their own indentation prefix above.
-          html = f"""<!DOCTYPE html>
-<html lang="sv">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Appendix &ndash; Kommuner med rekommenderade f&ouml;rkortningar, samt flygplatskoder</title>
-  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
-  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-  <style>
-    :root {{
-      --accent:        #1a6bbf;
-      --airport-bg:    #d4edda;
-      --airport-hover: #b8dfc4;
-      --multi-bg:      #fff3cd;
-      --multi-hover:   #ffe89a;
-      --bg:            #f8f9fa;
-      --border:        #dee2e6;
-      --text:          #212529;
-    }}
-    * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-    body {{
-      font-family: "Segoe UI", Arial, sans-serif;
-      font-size: 13px;
-      color: var(--text);
-      background: var(--bg);
-      padding: 24px 32px 48px;
-    }}
-    header {{ border-bottom: 3px solid var(--accent); margin-bottom: 20px; padding-bottom: 12px; }}
-    header h1 {{ font-size: 1.35rem; color: var(--accent); margin-bottom: 4px; }}
-    header .meta {{ font-size: 0.78rem; color: #6c757d; }}
-    .intro {{
-      background: #fff;
-      border: 1px solid var(--border);
-      border-left: 4px solid var(--accent);
-      border-radius: 4px;
-      padding: 14px 18px;
-      margin-bottom: 20px;
-      max-width: 900px;
-    }}
-    .intro h2 {{ font-size: 1rem; margin: 10px 0 4px; color: var(--accent); }}
-    .intro p  {{ margin: 6px 0; line-height: 1.5; }}
-    .intro a  {{ color: var(--accent); }}
-    .intro code {{ background: #e9ecef; padding: 1px 5px; border-radius: 3px; font-size: 0.85em; }}
-    .legend {{
-      display: flex; flex-wrap: wrap; gap: 16px;
-      align-items: center;
-      margin-bottom: 14px;
-      font-size: 0.82rem; color: #495057;
-    }}
-    .legend-item {{ display: flex; align-items: center; gap: 6px; }}
-    .legend-dot {{
-      width: 14px; height: 14px;
-      border-radius: 3px; flex-shrink: 0;
-    }}
-    .legend-dot.green  {{ background: var(--airport-bg); border: 1px solid #6abf7a; }}
-    .legend-dot.amber  {{ background: var(--multi-bg);   border: 1px solid #e6b800; }}
-    #wrapper {{ background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 16px; }}
-    table.dataTable {{ width: 100% !important; border-collapse: collapse; font-size: 12px; }}
-    table.dataTable thead th {{
-      background: var(--accent); color: #fff;
-      padding: 8px 10px; white-space: nowrap; border: none;
-    }}
-    table.dataTable thead th.sorting:after,
-    table.dataTable thead th.sorting_asc:after,
-    table.dataTable thead th.sorting_desc:after {{ color: rgba(255,255,255,0.75); }}
-    table.dataTable tbody td {{
-      padding: 5px 8px; border-bottom: 1px solid #e9ecef; vertical-align: top;
-    }}
-    table.dataTable tbody tr:hover td             {{ background: #eaf2fb !important; }}
-    table.dataTable tbody tr.has-airport td       {{ background: var(--airport-bg); }}
-    table.dataTable tbody tr.has-airport:hover td {{ background: var(--airport-hover) !important; }}
-    table.dataTable tbody tr.multi-airport td       {{ background: var(--multi-bg); }}
-    table.dataTable tbody tr.multi-airport:hover td {{ background: var(--multi-hover) !important; }}
-    .ap-badge {{
-      display: inline-block;
-      background: #e6b800; color: #333;
-      font-size: 0.72em; font-weight: 700;
-      padding: 1px 5px; border-radius: 10px;
-      vertical-align: middle; margin-right: 4px;
-    }}
-    .extra-ap {{
-      margin-top: 3px; font-size: 0.85em; color: #555;
-    }}
-    .iata, .icao {{
-      display: inline-block;
-      font-size: 0.78em; font-weight: 600;
-      padding: 0 3px; border-radius: 3px;
-    }}
-    .iata {{ background: #cfe2ff; color: #084298; }}
-    .icao {{ background: #e2e3e5; color: #383d41; }}
-    .dataTables_wrapper .dataTables_filter input {{
-      border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px;
-    }}
-    .dataTables_wrapper .dataTables_length select {{
-      border: 1px solid var(--border); border-radius: 4px; padding: 3px 6px;
-    }}
-    footer {{ margin-top: 24px; font-size: 0.75rem; color: #adb5bd; text-align: center; }}
-  </style>
-</head>
-<body>
-
-<header>
-  <h1>Appendix &ndash; Kommuner med rekommenderade f&ouml;rkortningar, samt flygplatskoder</h1>
-  <div class="meta">
-    Genererad: {build_date} &nbsp;&bull;&nbsp; {len(df)} kommuner &nbsp;&bull;&nbsp;
-    {n_multi} kommuner med flera flygplatser
-  </div>
-</header>
-
-<div class="intro">{intro_html}</div>
-
-<div class="legend">
-  <div class="legend-item">
-    <div class="legend-dot green"></div>
-    Gr&ouml;n = kommunen har en flygplats
-  </div>
-  <div class="legend-item">
-    <div class="legend-dot amber"></div>
-    Gul = kommunen har <strong>flera flygplatser</strong> (alla visas i cellen)
-  </div>
-</div>
-
-<div id="wrapper">
-  <table id="kommuner" class="dataTable display compact" style="width:100%">
-{thead}
-{tbody}
-  </table>
-</div>
-
-<footer>
-  frav_se, PappaNiklas, haxdoggy, DanielPaulsson, Burt Persson &mdash;
-  SysOps f&ouml;r <a href="http://had.meshmapper.net/">had.meshmapper.net</a>
-  &nbsp;&bull;&nbsp; Discord SWEDEN-MESH#halland
-</footer>
-
-<script>
-  $(document).ready(function () {{
-    $("#kommuner").DataTable({{
-      pageLength: -1,
-      paging: false,
-      lengthMenu: [[25, 50, 100, -1], [25, 50, 100, "Alla"]],
-      language: {{
-        search:       "S&ouml;k:",
-        lengthMenu:   "Visa _MENU_ rader",
-        info:         "Visar _START_&ndash;_END_ av _TOTAL_ kommuner",
-        infoEmpty:    "Inga kommuner att visa",
-        infoFiltered: "(filtrerat fr&aring;n _MAX_ totalt)",
-        zeroRecords:  "Inga matchande kommuner hittades",
-        paginate: {{
-          first: "F&ouml;rst", last: "Sist",
-          next: "N&auml;sta", previous: "F&ouml;reg&aring;ende"
-        }}
-      }}
-    }});
-  }});
-</script>
-</body>
-</html>"""
-
+          # Built as a Python list — every string stays indented inside the YAML
+          # block scalar, so no column-0 content that would break YAML parsing.
+          L = []
+          L.append("<!DOCTYPE html>")
+          L.append('<html lang="sv">')
+          L.append("<head>")
+          L.append('  <meta charset="UTF-8">')
+          L.append('  <meta name="viewport" content="width=device-width, initial-scale=1.0">')
+          L.append("  <title>Appendix &ndash; Kommuner med rekommenderade f&ouml;rkortningar, samt flygplatskoder</title>")
+          L.append('  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">')
+          L.append('  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>')
+          L.append('  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>')
+          L.append("  <style>")
+          L.append("    :root {")
+          L.append("      --accent:        #1a6bbf;")
+          L.append("      --airport-bg:    #d4edda;")
+          L.append("      --airport-hover: #b8dfc4;")
+          L.append("      --multi-bg:      #fff3cd;")
+          L.append("      --multi-hover:   #ffe89a;")
+          L.append("      --bg:            #f8f9fa;")
+          L.append("      --border:        #dee2e6;")
+          L.append("      --text:          #212529;")
+          L.append("    }")
+          L.append("    * { box-sizing: border-box; margin: 0; padding: 0; }")
+          L.append("    body {")
+          L.append('      font-family: "Segoe UI", Arial, sans-serif;')
+          L.append("      font-size: 13px;")
+          L.append("      color: var(--text);")
+          L.append("      background: var(--bg);")
+          L.append("      padding: 24px 32px 48px;")
+          L.append("    }")
+          L.append("    header { border-bottom: 3px solid var(--accent); margin-bottom: 20px; padding-bottom: 12px; }")
+          L.append("    header h1 { font-size: 1.35rem; color: var(--accent); margin-bottom: 4px; }")
+          L.append("    header .meta { font-size: 0.78rem; color: #6c757d; }")
+          L.append("    .intro {")
+          L.append("      background: #fff;")
+          L.append("      border: 1px solid var(--border);")
+          L.append("      border-left: 4px solid var(--accent);")
+          L.append("      border-radius: 4px;")
+          L.append("      padding: 14px 18px;")
+          L.append("      margin-bottom: 20px;")
+          L.append("      max-width: 900px;")
+          L.append("    }")
+          L.append("    .intro h2 { font-size: 1rem; margin: 10px 0 4px; color: var(--accent); }")
+          L.append("    .intro p  { margin: 6px 0; line-height: 1.5; }")
+          L.append("    .intro a  { color: var(--accent); }")
+          L.append("    .intro code { background: #e9ecef; padding: 1px 5px; border-radius: 3px; font-size: 0.85em; }")
+          L.append("    .legend {")
+          L.append("      display: flex; flex-wrap: wrap; gap: 16px;")
+          L.append("      align-items: center;")
+          L.append("      margin-bottom: 14px;")
+          L.append("      font-size: 0.82rem; color: #495057;")
+          L.append("    }")
+          L.append("    .legend-item { display: flex; align-items: center; gap: 6px; }")
+          L.append("    .legend-dot {")
+          L.append("      width: 14px; height: 14px;")
+          L.append("      border-radius: 3px; flex-shrink: 0;")
+          L.append("    }")
+          L.append("    .legend-dot.green  { background: var(--airport-bg); border: 1px solid #6abf7a; }")
+          L.append("    .legend-dot.amber  { background: var(--multi-bg);   border: 1px solid #e6b800; }")
+          L.append("    #wrapper { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 16px; }")
+          L.append("    table.dataTable { width: 100% !important; border-collapse: collapse; font-size: 12px; }")
+          L.append("    table.dataTable thead th {")
+          L.append("      background: var(--accent); color: #fff;")
+          L.append("      padding: 8px 10px; white-space: nowrap; border: none;")
+          L.append("    }")
+          L.append("    table.dataTable thead th.sorting:after,")
+          L.append("    table.dataTable thead th.sorting_asc:after,")
+          L.append("    table.dataTable thead th.sorting_desc:after { color: rgba(255,255,255,0.75); }")
+          L.append("    table.dataTable tbody td {")
+          L.append("      padding: 5px 8px; border-bottom: 1px solid #e9ecef; vertical-align: top;")
+          L.append("    }")
+          L.append("    table.dataTable tbody tr:hover td             { background: #eaf2fb !important; }")
+          L.append("    table.dataTable tbody tr.has-airport td       { background: var(--airport-bg); }")
+          L.append("    table.dataTable tbody tr.has-airport:hover td { background: var(--airport-hover) !important; }")
+          L.append("    table.dataTable tbody tr.multi-airport td       { background: var(--multi-bg); }")
+          L.append("    table.dataTable tbody tr.multi-airport:hover td { background: var(--multi-hover) !important; }")
+          L.append("    .ap-badge {")
+          L.append("      display: inline-block;")
+          L.append("      background: #e6b800; color: #333;")
+          L.append("      font-size: 0.72em; font-weight: 700;")
+          L.append("      padding: 1px 5px; border-radius: 10px;")
+          L.append("      vertical-align: middle; margin-right: 4px;")
+          L.append("    }")
+          L.append("    .extra-ap {")
+          L.append("      margin-top: 3px; font-size: 0.85em; color: #555;")
+          L.append("    }")
+          L.append("    .iata, .icao {")
+          L.append("      display: inline-block;")
+          L.append("      font-size: 0.78em; font-weight: 600;")
+          L.append("      padding: 0 3px; border-radius: 3px;")
+          L.append("    }")
+          L.append("    .iata { background: #cfe2ff; color: #084298; }")
+          L.append("    .icao { background: #e2e3e5; color: #383d41; }")
+          L.append("    .dataTables_wrapper .dataTables_filter input {")
+          L.append("      border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px;")
+          L.append("    }")
+          L.append("    .dataTables_wrapper .dataTables_length select {")
+          L.append("      border: 1px solid var(--border); border-radius: 4px; padding: 3px 6px;")
+          L.append("    }")
+          L.append("    footer { margin-top: 24px; font-size: 0.75rem; color: #adb5bd; text-align: center; }")
+          L.append("  </style>")
+          L.append("</head>")
+          L.append("<body>")
+          L.append("")
+          L.append("<header>")
+          L.append("  <h1>Appendix &ndash; Kommuner med rekommenderade f&ouml;rkortningar, samt flygplatskoder</h1>")
+          L.append('  <div class="meta">')
+          L.append(f"    Genererad: {build_date} &nbsp;&bull;&nbsp; {len(df)} kommuner &nbsp;&bull;&nbsp;")
+          L.append(f"    {n_multi} kommuner med flera flygplatser")
+          L.append("  </div>")
+          L.append("</header>")
+          L.append("")
+          L.append(f'<div class="intro">{intro_html}</div>')
+          L.append("")
+          L.append('<div class="legend">')
+          L.append('  <div class="legend-item">')
+          L.append('    <div class="legend-dot green"></div>')
+          L.append("    Gr&ouml;n = kommunen har en flygplats")
+          L.append("  </div>")
+          L.append('  <div class="legend-item">')
+          L.append('    <div class="legend-dot amber"></div>')
+          L.append("    Gul = kommunen har <strong>flera flygplatser</strong> (alla visas i cellen)")
+          L.append("  </div>")
+          L.append("</div>")
+          L.append("")
+          L.append('<div id="wrapper">')
+          L.append('  <table id="kommuner" class="dataTable display compact" style="width:100%">')
+          L.append(thead)
+          L.append(tbody)
+          L.append("  </table>")
+          L.append("</div>")
+          L.append("")
+          L.append("<footer>")
+          L.append("  frav_se, PappaNiklas, haxdoggy, DanielPaulsson, Burt Persson &mdash;")
+          L.append('  SysOps f&ouml;r <a href="http://had.meshmapper.net/">had.meshmapper.net</a>')
+          L.append("  &nbsp;&bull;&nbsp; Discord SWEDEN-MESH#halland")
+          L.append("</footer>")
+          L.append("")
+          L.append("<script>")
+          L.append("  $(document).ready(function () {")
+          L.append('    $("#kommuner").DataTable({')
+          L.append("      pageLength: -1,")
+          L.append("      paging: false,")
+          L.append('      lengthMenu: [[25, 50, 100, -1], [25, 50, 100, "Alla"]],')
+          L.append("      language: {")
+          L.append('        search:       "S&ouml;k:",')
+          L.append('        lengthMenu:   "Visa _MENU_ rader",')
+          L.append('        info:         "Visar _START_&ndash;_END_ av _TOTAL_ kommuner",')
+          L.append('        infoEmpty:    "Inga kommuner att visa",')
+          L.append('        infoFiltered: "(filtrerat fr&aring;n _MAX_ totalt)",')
+          L.append('        zeroRecords:  "Inga matchande kommuner hittades",')
+          L.append("        paginate: {")
+          L.append('          first: "F&ouml;rst", last: "Sist",')
+          L.append('          next: "N&auml;sta", previous: "F&ouml;reg&aring;ende"')
+          L.append("        }")
+          L.append("      }")
+          L.append("    });")
+          L.append("  });")
+          L.append("</script>")
+          L.append("</body>")
+          L.append("</html>")
+          html = "\n".join(L) + "\n"
           out = Path("output")
           out.mkdir(exist_ok=True)
           (out / f"Appendix_Kommuner_forkortningar_{build_date}.html").write_text(html, encoding="utf-8")
