@@ -1,0 +1,305 @@
+name: Render kommuner HTML and upload to release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write   # allow upload/update of release assets
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3 python3-pip
+          pip install pandas
+
+      - name: Build HTML
+        run: |
+          python3 - <<'PYCODE'
+          import pandas as pd
+          import re
+          import sys
+          from pathlib import Path
+          from datetime import date
+
+          # ── 1. Parse source markdown ────────────────────────────────────────
+          src = Path("appendix_-_kommuner_med_flygplatser_och_förkortningar_Komplett.md")
+          text = src.read_text(encoding="utf-8", errors="ignore")
+
+          # Split intro text and table
+          m = re.search(r"(\| *Storleks[^\n]+(\n\|[^\n]+)+)", text)
+          if not m:
+              sys.exit("Could not find markdown table")
+
+          intro_raw = text[:m.start()].strip()
+          table_md  = m.group(1)
+
+          # Convert intro markdown to simple HTML (bold, links, code, headings)
+          def md_to_html_inline(s):
+              s = re.sub(r"^#{1,6} (.+)$", lambda x: f"<h2>{x.group(1)}</h2>", s, flags=re.MULTILINE)
+              s = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", s)
+              s = re.sub(r"`(.+?)`", r"<code>\1</code>", s)
+              s = re.sub(r"\[([^\]]+)\]\((https?://[^)]+)\)", r'<a href="\2">\1</a>', s)
+              # paragraphs
+              paras = [p.strip() for p in re.split(r"\n{2,}", s) if p.strip()]
+              out = []
+              for p in paras:
+                  if p.startswith("<h2>"):
+                      out.append(p)
+                  else:
+                      out.append(f"<p>{p}</p>")
+              return "\n".join(out)
+
+          intro_html = md_to_html_inline(intro_raw)
+
+          # ── 2. Parse table rows ─────────────────────────────────────────────
+          rows = []
+          for line in table_md.splitlines():
+              line = line.strip()
+              if not line.startswith("|"):
+                  continue
+              if re.match(r"^\|[\s\-:]+\|", line):
+                  continue
+              cells = [c.strip() for c in line.strip("|").split("|")]
+              rows.append(cells)
+
+          if len(rows) < 2:
+              sys.exit("Not enough rows parsed")
+
+          headers = [" ".join(h.split()) for h in rows[0]]
+          data    = rows[1:]
+          n       = len(headers)
+          data    = [r[:n] + [""] * (n - len(r)) for r in data]
+
+          df = pd.DataFrame(data, columns=headers)
+
+          # ── 3. Mark rows that have a flygplats (IATA or ICAO non-empty) ────
+          iata_col = next((c for c in df.columns if "IATA" in c), None)
+          icao_col = next((c for c in df.columns if "ICAO" in c), None)
+
+          def has_airport(row):
+              return bool(
+                  (iata_col and str(row.get(iata_col, "")).strip()) or
+                  (icao_col and str(row.get(icao_col, "")).strip())
+              )
+
+          # ── 4. Build HTML table rows ────────────────────────────────────────
+          def esc(v):
+              return (str(v)
+                      .replace("&", "&amp;")
+                      .replace("<", "&lt;")
+                      .replace(">", "&gt;")
+                      .replace('"', "&quot;"))
+
+          thead_cells = "".join(f"<th>{esc(h)}</th>" for h in headers)
+          thead = f"<thead><tr>{thead_cells}</tr></thead>"
+
+          tbody_rows = []
+          for _, row in df.iterrows():
+              cls = ' class="has-airport"' if has_airport(row) else ""
+              cells = "".join(f"<td>{esc(row[h])}</td>" for h in headers)
+              tbody_rows.append(f"<tr{cls}>{cells}</tr>")
+          tbody = "<tbody>\n" + "\n".join(tbody_rows) + "\n</tbody>"
+
+          build_date = date.today().isoformat()
+
+          # ── 5. Assemble full HTML page ──────────────────────────────────────
+          html = f"""<!DOCTYPE html>
+          <html lang="sv">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Appendix &ndash; Kommuner med rekommenderade f&ouml;rkortningar, samt flygplatskoder</title>
+
+            <!-- DataTables + jQuery via CDN -->
+            <link  rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+            <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+            <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+
+            <style>
+              :root {{
+                --accent:   #1a6bbf;
+                --airport:  #d4edda;
+                --airport-border: #6abf7a;
+                --bg:       #f8f9fa;
+                --border:   #dee2e6;
+                --text:     #212529;
+              }}
+              * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+              body {{
+                font-family: "Segoe UI", Arial, sans-serif;
+                font-size: 13px;
+                color: var(--text);
+                background: var(--bg);
+                padding: 24px 32px 48px;
+              }}
+              header {{
+                border-bottom: 3px solid var(--accent);
+                margin-bottom: 20px;
+                padding-bottom: 12px;
+              }}
+              header h1 {{
+                font-size: 1.35rem;
+                color: var(--accent);
+                margin-bottom: 4px;
+              }}
+              header .meta {{ font-size: 0.78rem; color: #6c757d; }}
+              .intro {{
+                background: #fff;
+                border: 1px solid var(--border);
+                border-left: 4px solid var(--accent);
+                border-radius: 4px;
+                padding: 14px 18px;
+                margin-bottom: 20px;
+                max-width: 900px;
+              }}
+              .intro h2 {{ font-size: 1rem; margin: 10px 0 4px; color: var(--accent); }}
+              .intro p  {{ margin: 6px 0; line-height: 1.5; }}
+              .intro a  {{ color: var(--accent); }}
+              .intro code {{
+                background: #e9ecef;
+                padding: 1px 5px;
+                border-radius: 3px;
+                font-size: 0.85em;
+              }}
+              .legend {{
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-bottom: 14px;
+                font-size: 0.82rem;
+                color: #495057;
+              }}
+              .legend-dot {{
+                width: 14px; height: 14px;
+                background: var(--airport);
+                border: 1px solid var(--airport-border);
+                border-radius: 3px;
+                flex-shrink: 0;
+              }}
+              #wrapper {{ background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 16px; }}
+              table.dataTable {{
+                width: 100% !important;
+                border-collapse: collapse;
+                font-size: 12px;
+              }}
+              table.dataTable thead th {{
+                background: var(--accent);
+                color: #fff;
+                padding: 8px 10px;
+                white-space: nowrap;
+                border: none;
+              }}
+              table.dataTable thead th.sorting:after,
+              table.dataTable thead th.sorting_asc:after,
+              table.dataTable thead th.sorting_desc:after {{
+                color: rgba(255,255,255,0.75);
+              }}
+              table.dataTable tbody td {{
+                padding: 5px 8px;
+                border-bottom: 1px solid #e9ecef;
+                vertical-align: top;
+              }}
+              table.dataTable tbody tr:hover td {{ background: #eaf2fb !important; }}
+              table.dataTable tbody tr.has-airport td {{
+                background: var(--airport);
+              }}
+              table.dataTable tbody tr.has-airport:hover td {{ background: #b8dfc4 !important; }}
+              .dataTables_wrapper .dataTables_filter input {{
+                border: 1px solid var(--border);
+                border-radius: 4px;
+                padding: 4px 8px;
+              }}
+              .dataTables_wrapper .dataTables_length select {{
+                border: 1px solid var(--border);
+                border-radius: 4px;
+                padding: 3px 6px;
+              }}
+              footer {{
+                margin-top: 24px;
+                font-size: 0.75rem;
+                color: #adb5bd;
+                text-align: center;
+              }}
+            </style>
+          </head>
+          <body>
+
+          <header>
+            <h1>Appendix &ndash; Kommuner med rekommenderade f&ouml;rkortningar, samt flygplatskoder</h1>
+            <div class="meta">Genererad: {build_date} &nbsp;&bull;&nbsp; {len(df)} kommuner</div>
+          </header>
+
+          <div class="intro">
+          {intro_html}
+          </div>
+
+          <div class="legend">
+            <div class="legend-dot"></div>
+            Gr&ouml;n rad = kommunen har minst en flygplats (IATA/ICAO registrerad)
+          </div>
+
+          <div id="wrapper">
+            <table id="kommuner" class="dataTable display compact" style="width:100%">
+              {thead}
+              {tbody}
+            </table>
+          </div>
+
+          <footer>
+            frav_se, PappaNiklas, haxdoggy, DanielPaulsson, Burt Persson &mdash;
+            SysOps f&ouml;r <a href="http://had.meshmapper.net/">had.meshmapper.net</a> &nbsp;&bull;&nbsp;
+            Discord SWEDEN-MESH#halland
+          </footer>
+
+          <script>
+            $(document).ready(function () {{
+              $("#kommuner").DataTable({{
+                pageLength: 50,
+                lengthMenu: [25, 50, 100, 290],
+                language: {{
+                  search:          "S&ouml;k:",
+                  lengthMenu:      "Visa _MENU_ rader",
+                  info:            "Visar _START_&ndash;_END_ av _TOTAL_ kommuner",
+                  infoEmpty:       "Inga kommuner att visa",
+                  infoFiltered:    "(filtrerat fr&aring;n _MAX_ totalt)",
+                  zeroRecords:     "Inga matchande kommuner hittades",
+                  paginate: {{
+                    first:    "F&ouml;rst",
+                    last:     "Sist",
+                    next:     "N&auml;sta",
+                    previous: "F&ouml;reg&aring;ende"
+                  }}
+                }}
+              }});
+            }});
+          </script>
+          </body>
+          </html>"""
+
+          # De-indent (the f-string is indented in the heredoc)
+          import textwrap
+          html = textwrap.dedent(html)
+
+          out = Path("output")
+          out.mkdir(exist_ok=True)
+          (out / "Kommuner_Flygplatser.html").write_text(html, encoding="utf-8")
+          print(f"Done - HTML written ({len(df)} rows)")
+          PYCODE
+
+      - name: Upload HTML as release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: output/Kommuner_Flygplatser.html
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
