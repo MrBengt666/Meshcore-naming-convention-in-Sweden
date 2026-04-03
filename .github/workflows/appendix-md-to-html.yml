@@ -32,108 +32,167 @@ jobs:
           from pathlib import Path
           from datetime import date
 
-          # ── 1. Parse source markdown ────────────────────────────────────────
-          src = Path("appendix_-_kommuner_med_flygplatser_och_förkortningar_Komplett.md")
+          # ── 1. Read source ──────────────────────────────────────────────────
+          src  = Path("appendix_-_kommuner_med_flygplatser_och_förkortningar_Komplett.md")
           text = src.read_text(encoding="utf-8", errors="ignore")
+          all_lines = text.splitlines()
 
-          # Split intro text and table
-          m = re.search(r"(\| *Storleks[^\n]+(\n\|[^\n]+)+)", text)
-          if not m:
-              sys.exit("Could not find markdown table")
+          # Split at first table line
+          table_start = next(i for i, l in enumerate(all_lines) if l.startswith("| Storleks"))
+          intro_raw   = "\n".join(all_lines[:table_start]).strip()
+          table_lines = [l for l in all_lines[table_start:] if l.startswith("|")]
 
-          intro_raw = text[:m.start()].strip()
-          table_md  = m.group(1)
-
-          # Convert intro markdown to simple HTML (bold, links, code, headings)
+          # ── 2. Convert intro markdown → HTML ────────────────────────────────
           def md_to_html_inline(s):
               s = re.sub(r"^#{1,6} (.+)$", lambda x: f"<h2>{x.group(1)}</h2>", s, flags=re.MULTILINE)
               s = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", s)
               s = re.sub(r"`(.+?)`", r"<code>\1</code>", s)
               s = re.sub(r"\[([^\]]+)\]\((https?://[^)]+)\)", r'<a href="\2">\1</a>', s)
-              # paragraphs
               paras = [p.strip() for p in re.split(r"\n{2,}", s) if p.strip()]
               out = []
               for p in paras:
-                  if p.startswith("<h2>"):
-                      out.append(p)
-                  else:
-                      out.append(f"<p>{p}</p>")
+                  out.append(p if p.startswith("<h2>") else f"<p>{p}</p>")
               return "\n".join(out)
 
           intro_html = md_to_html_inline(intro_raw)
 
-          # ── 2. Parse table rows ─────────────────────────────────────────────
-          rows = []
-          for line in table_md.splitlines():
-              line = line.strip()
-              if not line.startswith("|"):
+          # ── 3. Parse table: primary rows + continuation rows ─────────────────
+          # Layout: line starts with |, so split("|") gives cells[0]="" always.
+          # Primary row:      cells[1]=Storleks-ordning (non-empty)
+          #                   cells[3]=Kommun, cells[7]=Flygplatsnamn,
+          #                   cells[8]=IATA,   cells[9]=ICAO
+          # Continuation row: cells[1]="" (Storleks-ordning empty)
+          #                   cells[2]=Flygplatsnamn, cells[3]=IATA, cells[4]=ICAO
+
+          def parse_cells(line):
+              return [c.strip() for c in line.split("|")]
+
+          # Build per-Kommun airport list first (for multi-airport detection)
+          airport_map = {}   # Kommun name -> list of dict(name,iata,icao)
+          current = None
+          for line in table_lines:
+              cells = parse_cells(line)
+              ordning = cells[1] if len(cells) > 1 else ""
+              if re.match(r"^[\-\s:]+$", ordning) or ordning == "Storleks- ordning":
                   continue
-              if re.match(r"^\|[\s\-:]+\|", line):
+              is_cont = ordning.strip() == ""
+              if is_cont:
+                  fp   = cells[2] if len(cells) > 2 else ""
+                  iata = cells[3] if len(cells) > 3 else ""
+                  icao = cells[4] if len(cells) > 4 else ""
+                  if current and (fp or iata or icao):
+                      airport_map[current].append(dict(name=fp, iata=iata, icao=icao))
+              else:
+                  current = cells[3] if len(cells) > 3 else ""
+                  if current not in airport_map:
+                      airport_map[current] = []
+                  fp   = cells[7] if len(cells) > 7 else ""
+                  iata = cells[8] if len(cells) > 8 else ""
+                  icao = cells[9] if len(cells) > 9 else ""
+                  if fp or iata or icao:
+                      airport_map[current].append(dict(name=fp, iata=iata, icao=icao))
+
+          multi_airport_kommuner = {k for k, v in airport_map.items() if len(v) > 1}
+
+          # Build primary-row DataFrame (skip continuation rows)
+          primary_rows = []
+          header_cells = None
+          for line in table_lines:
+              cells = parse_cells(line)
+              ordning = cells[1] if len(cells) > 1 else ""
+              if re.match(r"^[\-\s:]+$", ordning):
                   continue
-              cells = [c.strip() for c in line.strip("|").split("|")]
-              rows.append(cells)
+              if ordning.strip() == "Storleks- ordning":
+                  # Normalise header names
+                  header_cells = [" ".join(c.split()) for c in cells[1:]]
+                  continue
+              if ordning.strip() == "":
+                  continue  # skip continuation rows in the flat table
+              primary_rows.append(cells[1:])  # drop the leading empty cell
 
-          if len(rows) < 2:
-              sys.exit("Not enough rows parsed")
+          if not header_cells or not primary_rows:
+              sys.exit("Could not build DataFrame")
 
-          headers = [" ".join(h.split()) for h in rows[0]]
-          data    = rows[1:]
-          n       = len(headers)
-          data    = [r[:n] + [""] * (n - len(r)) for r in data]
+          n  = len(header_cells)
+          primary_rows = [r[:n] + [""] * (n - len(r)) for r in primary_rows]
+          df = pd.DataFrame(primary_rows, columns=header_cells)
 
-          df = pd.DataFrame(data, columns=headers)
+          # Normalise column lookup
+          def col(name):
+              return next((c for c in df.columns if name in c), None)
 
-          # ── 3. Mark rows that have a flygplats (IATA or ICAO non-empty) ────
-          iata_col = next((c for c in df.columns if "IATA" in c), None)
-          icao_col = next((c for c in df.columns if "ICAO" in c), None)
+          kommun_col = col("Kommun")
+          iata_c     = col("IATA")
+          icao_c     = col("ICAO")
+          fp_c       = col("Flygplatsnamn")
 
-          def has_airport(row):
-              return bool(
-                  (iata_col and str(row.get(iata_col, "")).strip()) or
-                  (icao_col and str(row.get(icao_col, "")).strip())
-              )
-
-          # ── 4. Build HTML table rows ────────────────────────────────────────
+          # ── 4. Build HTML rows ───────────────────────────────────────────────
           def esc(v):
-              return (str(v)
-                      .replace("&", "&amp;")
-                      .replace("<", "&lt;")
-                      .replace(">", "&gt;")
-                      .replace('"', "&quot;"))
+              return (str(v).replace("&","&amp;").replace("<","&lt;")
+                            .replace(">","&gt;").replace('"',"&quot;"))
 
-          thead_cells = "".join(f"<th>{esc(h)}</th>" for h in headers)
+          thead_cells = "".join(f"<th>{esc(h)}</th>" for h in header_cells)
           thead = f"<thead><tr>{thead_cells}</tr></thead>"
 
           tbody_rows = []
           for _, row in df.iterrows():
-              cls = ' class="has-airport"' if has_airport(row) else ""
-              cells = "".join(f"<td>{esc(row[h])}</td>" for h in headers)
-              tbody_rows.append(f"<tr{cls}>{cells}</tr>")
+              kommune = str(row.get(kommun_col, "")).strip()
+              aps     = airport_map.get(kommune, [])
+              n_ap    = len(aps)
+              has_ap  = n_ap > 0
+              is_multi = kommune in multi_airport_kommuner
+
+              if is_multi:
+                  cls = ' class="multi-airport"'
+              elif has_ap:
+                  cls = ' class="has-airport"'
+              else:
+                  cls = ""
+
+              cells_html = []
+              for h in header_cells:
+                  val = esc(row[h])
+                  # Annotate Flygplatsnamn cell with extra airports
+                  if h == fp_c and is_multi:
+                      extras = aps[1:]   # first airport already in the cell
+                      extra_lines = "".join(
+                          f'<div class="extra-ap">{esc(a["name"])}'
+                          f'{"&nbsp;<span class=iata>" + esc(a["iata"]) + "</span>" if a["iata"] else ""}'
+                          f'{"&nbsp;<span class=icao>" + esc(a["icao"]) + "</span>" if a["icao"] else ""}'
+                          f'</div>'
+                          for a in extras
+                      )
+                      badge = f'<span class="ap-badge">{n_ap} flygplatser</span>'
+                      val = f"{badge} {val}{extra_lines}"
+                  cells_html.append(f"<td>{val}</td>")
+
+              tbody_rows.append(f"<tr{cls}>{''.join(cells_html)}</tr>")
+
           tbody = "<tbody>\n" + "\n".join(tbody_rows) + "\n</tbody>"
 
           build_date = date.today().isoformat()
+          n_multi    = len(multi_airport_kommuner)
 
-          # ── 5. Assemble full HTML page ──────────────────────────────────────
+          # ── 5. Assemble HTML ─────────────────────────────────────────────────
           html = f"""<!DOCTYPE html>
           <html lang="sv">
           <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Appendix &ndash; Kommuner med rekommenderade f&ouml;rkortningar, samt flygplatskoder</title>
-
-            <!-- DataTables + jQuery via CDN -->
-            <link  rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+            <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
             <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
             <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-
             <style>
               :root {{
-                --accent:   #1a6bbf;
-                --airport:  #d4edda;
-                --airport-border: #6abf7a;
-                --bg:       #f8f9fa;
-                --border:   #dee2e6;
-                --text:     #212529;
+                --accent:        #1a6bbf;
+                --airport-bg:    #d4edda;
+                --airport-hover: #b8dfc4;
+                --multi-bg:      #fff3cd;
+                --multi-hover:   #ffe89a;
+                --bg:            #f8f9fa;
+                --border:        #dee2e6;
+                --text:          #212529;
               }}
               * {{ box-sizing: border-box; margin: 0; padding: 0; }}
               body {{
@@ -143,16 +202,8 @@ jobs:
                 background: var(--bg);
                 padding: 24px 32px 48px;
               }}
-              header {{
-                border-bottom: 3px solid var(--accent);
-                margin-bottom: 20px;
-                padding-bottom: 12px;
-              }}
-              header h1 {{
-                font-size: 1.35rem;
-                color: var(--accent);
-                margin-bottom: 4px;
-              }}
+              header {{ border-bottom: 3px solid var(--accent); margin-bottom: 20px; padding-bottom: 12px; }}
+              header h1 {{ font-size: 1.35rem; color: var(--accent); margin-bottom: 4px; }}
               header .meta {{ font-size: 0.78rem; color: #6c757d; }}
               .intro {{
                 background: #fff;
@@ -166,87 +217,84 @@ jobs:
               .intro h2 {{ font-size: 1rem; margin: 10px 0 4px; color: var(--accent); }}
               .intro p  {{ margin: 6px 0; line-height: 1.5; }}
               .intro a  {{ color: var(--accent); }}
-              .intro code {{
-                background: #e9ecef;
-                padding: 1px 5px;
-                border-radius: 3px;
-                font-size: 0.85em;
-              }}
+              .intro code {{ background: #e9ecef; padding: 1px 5px; border-radius: 3px; font-size: 0.85em; }}
               .legend {{
-                display: flex;
+                display: flex; flex-wrap: wrap; gap: 16px;
                 align-items: center;
-                gap: 8px;
                 margin-bottom: 14px;
-                font-size: 0.82rem;
-                color: #495057;
+                font-size: 0.82rem; color: #495057;
               }}
+              .legend-item {{ display: flex; align-items: center; gap: 6px; }}
               .legend-dot {{
                 width: 14px; height: 14px;
-                background: var(--airport);
-                border: 1px solid var(--airport-border);
-                border-radius: 3px;
-                flex-shrink: 0;
+                border-radius: 3px; flex-shrink: 0;
               }}
+              .legend-dot.green  {{ background: var(--airport-bg); border: 1px solid #6abf7a; }}
+              .legend-dot.amber  {{ background: var(--multi-bg);   border: 1px solid #e6b800; }}
               #wrapper {{ background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 16px; }}
-              table.dataTable {{
-                width: 100% !important;
-                border-collapse: collapse;
-                font-size: 12px;
-              }}
+              table.dataTable {{ width: 100% !important; border-collapse: collapse; font-size: 12px; }}
               table.dataTable thead th {{
-                background: var(--accent);
-                color: #fff;
-                padding: 8px 10px;
-                white-space: nowrap;
-                border: none;
+                background: var(--accent); color: #fff;
+                padding: 8px 10px; white-space: nowrap; border: none;
               }}
               table.dataTable thead th.sorting:after,
               table.dataTable thead th.sorting_asc:after,
-              table.dataTable thead th.sorting_desc:after {{
-                color: rgba(255,255,255,0.75);
-              }}
+              table.dataTable thead th.sorting_desc:after {{ color: rgba(255,255,255,0.75); }}
               table.dataTable tbody td {{
-                padding: 5px 8px;
-                border-bottom: 1px solid #e9ecef;
-                vertical-align: top;
+                padding: 5px 8px; border-bottom: 1px solid #e9ecef; vertical-align: top;
               }}
-              table.dataTable tbody tr:hover td {{ background: #eaf2fb !important; }}
-              table.dataTable tbody tr.has-airport td {{
-                background: var(--airport);
+              table.dataTable tbody tr:hover td             {{ background: #eaf2fb !important; }}
+              table.dataTable tbody tr.has-airport td       {{ background: var(--airport-bg); }}
+              table.dataTable tbody tr.has-airport:hover td {{ background: var(--airport-hover) !important; }}
+              table.dataTable tbody tr.multi-airport td       {{ background: var(--multi-bg); }}
+              table.dataTable tbody tr.multi-airport:hover td {{ background: var(--multi-hover) !important; }}
+              .ap-badge {{
+                display: inline-block;
+                background: #e6b800; color: #333;
+                font-size: 0.72em; font-weight: 700;
+                padding: 1px 5px; border-radius: 10px;
+                vertical-align: middle; margin-right: 4px;
               }}
-              table.dataTable tbody tr.has-airport:hover td {{ background: #b8dfc4 !important; }}
+              .extra-ap {{
+                margin-top: 3px; font-size: 0.85em; color: #555;
+              }}
+              .iata, .icao {{
+                display: inline-block;
+                font-size: 0.78em; font-weight: 600;
+                padding: 0 3px; border-radius: 3px;
+              }}
+              .iata {{ background: #cfe2ff; color: #084298; }}
+              .icao {{ background: #e2e3e5; color: #383d41; }}
               .dataTables_wrapper .dataTables_filter input {{
-                border: 1px solid var(--border);
-                border-radius: 4px;
-                padding: 4px 8px;
+                border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px;
               }}
               .dataTables_wrapper .dataTables_length select {{
-                border: 1px solid var(--border);
-                border-radius: 4px;
-                padding: 3px 6px;
+                border: 1px solid var(--border); border-radius: 4px; padding: 3px 6px;
               }}
-              footer {{
-                margin-top: 24px;
-                font-size: 0.75rem;
-                color: #adb5bd;
-                text-align: center;
-              }}
+              footer {{ margin-top: 24px; font-size: 0.75rem; color: #adb5bd; text-align: center; }}
             </style>
           </head>
           <body>
 
           <header>
             <h1>Appendix &ndash; Kommuner med rekommenderade f&ouml;rkortningar, samt flygplatskoder</h1>
-            <div class="meta">Genererad: {build_date} &nbsp;&bull;&nbsp; {len(df)} kommuner</div>
+            <div class="meta">
+              Genererad: {build_date} &nbsp;&bull;&nbsp; {len(df)} kommuner &nbsp;&bull;&nbsp;
+              {n_multi} kommuner med flera flygplatser
+            </div>
           </header>
 
-          <div class="intro">
-          {intro_html}
-          </div>
+          <div class="intro">{intro_html}</div>
 
           <div class="legend">
-            <div class="legend-dot"></div>
-            Gr&ouml;n rad = kommunen har minst en flygplats (IATA/ICAO registrerad)
+            <div class="legend-item">
+              <div class="legend-dot green"></div>
+              Gr&ouml;n = kommunen har en flygplats
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot amber"></div>
+              Gul = kommunen har <strong>flera flygplatser</strong> (alla visas i cellen)
+            </div>
           </div>
 
           <div id="wrapper">
@@ -258,27 +306,25 @@ jobs:
 
           <footer>
             frav_se, PappaNiklas, haxdoggy, DanielPaulsson, Burt Persson &mdash;
-            SysOps f&ouml;r <a href="http://had.meshmapper.net/">had.meshmapper.net</a> &nbsp;&bull;&nbsp;
-            Discord SWEDEN-MESH#halland
+            SysOps f&ouml;r <a href="http://had.meshmapper.net/">had.meshmapper.net</a>
+            &nbsp;&bull;&nbsp; Discord SWEDEN-MESH#halland
           </footer>
 
           <script>
             $(document).ready(function () {{
               $("#kommuner").DataTable({{
-                pageLength: 50,
-                lengthMenu: [25, 50, 100, 290],
+                pageLength: -1,
+                lengthMenu: [[25, 50, 100, -1], [25, 50, 100, "Alla"]],
                 language: {{
-                  search:          "S&ouml;k:",
-                  lengthMenu:      "Visa _MENU_ rader",
-                  info:            "Visar _START_&ndash;_END_ av _TOTAL_ kommuner",
-                  infoEmpty:       "Inga kommuner att visa",
-                  infoFiltered:    "(filtrerat fr&aring;n _MAX_ totalt)",
-                  zeroRecords:     "Inga matchande kommuner hittades",
+                  search:       "S&ouml;k:",
+                  lengthMenu:   "Visa _MENU_ rader",
+                  info:         "Visar _START_&ndash;_END_ av _TOTAL_ kommuner",
+                  infoEmpty:    "Inga kommuner att visa",
+                  infoFiltered: "(filtrerat fr&aring;n _MAX_ totalt)",
+                  zeroRecords:  "Inga matchande kommuner hittades",
                   paginate: {{
-                    first:    "F&ouml;rst",
-                    last:     "Sist",
-                    next:     "N&auml;sta",
-                    previous: "F&ouml;reg&aring;ende"
+                    first: "F&ouml;rst", last: "Sist",
+                    next: "N&auml;sta", previous: "F&ouml;reg&aring;ende"
                   }}
                 }}
               }});
@@ -287,14 +333,12 @@ jobs:
           </body>
           </html>"""
 
-          # De-indent (the f-string is indented in the heredoc)
           import textwrap
           html = textwrap.dedent(html)
-
           out = Path("output")
           out.mkdir(exist_ok=True)
           (out / f"Appendix_Kommuner_forkortningar_{build_date}.html").write_text(html, encoding="utf-8")
-          print(f"Done - HTML written ({len(df)} rows)")
+          print(f"Done - {len(df)} kommuner, {n_multi} med flera flygplatser")
           PYCODE
 
       - name: Upload HTML as release asset
