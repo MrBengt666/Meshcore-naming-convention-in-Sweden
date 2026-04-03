@@ -293,13 +293,13 @@ jobs:
 
           out = Path("output")
           out.mkdir(exist_ok=True)
-          (out / "Kommuner_Flygplatser.html").write_text(html, encoding="utf-8")
+          (out / f"Appendix_Kommuner_forkortningar_{build_date}.html").write_text(html, encoding="utf-8")
           print(f"Done - HTML written ({len(df)} rows)")
           PYCODE
 
       - name: Upload HTML as release asset
         uses: softprops/action-gh-release@v2
         with:
-          files: output/Kommuner_Flygplatser.html
+          files: output/Appendix_Kommuner_forkortningar_*.html
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
