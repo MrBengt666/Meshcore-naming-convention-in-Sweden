@@ -343,6 +343,6 @@ Rader markerade i `grönt` innehåller en eller flera flygplatser inom kommunen 
 |  | Östersund-Optand flygfält |  | ESNM |  | Östersund | 63°13'N 14°39'E | 831 92 |  |  |  |  |  |  |  |  |  |  |  |  |
 | 52 | 0117 | Österåkers kommun | STK | Åkersberga | Stockholms län |  |  |  |  |  |  |  | 49 943 | 554,45 | 312,37 | 10,90 | 0,00 | 231,18 | 159,88 |
 | 118 | 0382 | Östhammars kommun | STH | Östhammar | Uppsala län | Gimo flygplats |  | ESKA |  | Gimo | 60°11'N 18°07'E | 747 91 | 22 181 | 3 486,89 | 1 474,61 | 28,06 | 0,00 | 1 984,22 | 15,04 |
-| 168 | 1256 | Östra Göinge kommun | STG | Broby | Skåne län | Knislinge flygplats |  | ESFI |  | Knislinge | 56°12'N 14°06'E | 289 91 | 13 718 | 451,14 | 431,84 | 19,30 | 0,00 | 0,00 | 31,77 |
+| 168 | 1256 | Östra Göinge kommun | OGE | Broby | Skåne län | Knislinge flygplats |  | ESFI |  | Knislinge | 56°12'N 14°06'E | 289 91 | 13 718 | 451,14 | 431,84 | 19,30 | 0,00 | 0,00 | 31,77 |
 | 284 | 2513 | Överkalix kommun | VER | Överkalix | Norrbottens län | Överkalix (Naisheden) |  | ESNE |  | Överkalix | 66°24'N 22°38'E | 956 31 | 3 183 | 2 919,47 | 2 764,52 | 154,95 | 0,00 | 0,00 | 1,15 |
 | 279 | 2518 | Övertorneå kommun | VEO | Övertorneå | Norrbottens län |  |  |  |  |  |  |  | 3 995 | 2 492,52 | 2 362,30 | 130,22 | 0,00 | 0,00 | 1,69 |
